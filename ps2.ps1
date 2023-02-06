@@ -30,6 +30,8 @@ PS2. If not, see https://www.gnu.org/licenses.
 (-nC) Do not use colour in terminal output
 .PARAMETER noPing
 (-nP) Assume all hosts are up and do not ping them prior to scanning
+.PARAMETER overwrite
+(-o) Force output files to be overwritten if they exist and do not prompt for confirmation
 .PARAMETER outAll
 (-oA) Save output in txt and JSON formats to files with a specified name (supersedes -oJ and -oT options)
 .PARAMETER outJson
@@ -63,6 +65,7 @@ param([Parameter(Mandatory=$false)][alias("b")][switch] $banners,
       [Parameter(Mandatory=$false)][alias("m")][System.IO.FileInfo] $serviceMap,
       [Parameter(Mandatory=$false)][alias("nC")][switch] $noColour,
       [Parameter(Mandatory=$false)][alias("nP")][switch] $noPing,
+      [Parameter(Mandatory=$false)][alias("o")][switch] $overwrite,
       [Parameter(Mandatory=$false)][alias("oA")][System.IO.FileInfo] $outAll,
       [Parameter(Mandatory=$false)][alias("oJ")][System.IO.FileInfo] $outJson,
       [Parameter(Mandatory=$false)][alias("oT")][System.IO.FileInfo] $outTxt,
@@ -198,7 +201,7 @@ function checkOutFile {
     #>
     param([Parameter(Mandatory=$true)][System.IO.FileInfo] $file)
     if ($file | Test-Path) {
-        if (-Not (yN -prompt "'$file' exists, overwrite it?")) {
+        if (-Not $overwrite -and -Not (yN -prompt "'$file' exists, overwrite it?")) {
             Exit
         }
         Tee-Object -FilePath $file
