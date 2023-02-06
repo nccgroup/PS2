@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-A basic port scanner written purely in PowerShell
+A port scanner written purely in PowerShell
 .Description
-A basic port scanner written purely in PowerShell
+A port scanner written purely in PowerShell
 
 Released as open source by NCC Group Plc - http://www.nccgroup.com/
 
@@ -16,7 +16,7 @@ PS2. If not, see https://www.gnu.org/licenses.
 (-b) Attempt to grab banners from open ports
 .PARAMETER delay
 (-d) Delay to use between each connection in milliseconds
-.PARAMETER inFile
+.PARAMETER inFiles
 (-f) File(s) containing targets to scan (1 per line)
 .PARAMETER help
 (-h) Displays help information
@@ -24,6 +24,8 @@ PS2. If not, see https://www.gnu.org/licenses.
 (-i) IP address(es) of target(s) to scan (supports individual IPv4 addresses, IPv4 address ranges, IPv4 CIDR notation, and individual IPv6 addresses)
 .PARAMETER serviceMap
 (-m) Service map to use (overrides default of <PS2_dir>/servicemap.csv)
+.PARAMETER hostnames
+(-n) Hostname(s) of target(s) to scan
 .PARAMETER noColour
 (-nC) Do not use colour in terminal output
 .PARAMETER noPing
@@ -54,8 +56,9 @@ PS2. If not, see https://www.gnu.org/licenses.
 [cmdletbinding()]
 param([Parameter(Mandatory=$false)][alias("b")][switch] $banners,
       [Parameter(Mandatory=$false)][alias("d")][int] $delay,
-      [Parameter(Mandatory=$false)][alias("f")][System.IO.FileInfo[]] $inFile,
+      [Parameter(Mandatory=$false)][alias("f")][System.IO.FileInfo[]] $inFiles,
       [Parameter(Mandatory=$false)][alias("h")][switch] $help,
+      [Parameter(Mandatory=$false)][alias("n")][string[]] $hostnames,
       [Parameter(Mandatory=$false)][alias("i")][string[]] $ips,
       [Parameter(Mandatory=$false)][alias("m")][System.IO.FileInfo] $serviceMap,
       [Parameter(Mandatory=$false)][alias("nC")][switch] $noColour,
@@ -261,6 +264,36 @@ function checkTargets {
     return $valid
 }
 
+function dnsLookup {
+    <#
+    .SYNOPSIS
+    Gets IP addresses for a given hostname
+    .PARAMETER targets
+    List of hostnames to look up (required)
+    .OUTPUTS
+    List of IP addresses
+    #>
+    param([Parameter(Mandatory=$true)][string[]] $targets)
+    $resolved = @()
+    foreach ($target in $targets) {
+        if ($verbose) {
+            writeOut -text "Resolving '$target'..." -NoNewLine
+        }
+        try {
+            $addrs = [System.Net.Dns]::GetHostAddresses($target)
+            foreach ($addr in $addrs) {
+                $resolved += $addr
+            }
+        } catch {
+            Throw "Could not resolve hostname '$target'"
+        }
+        if ($verbose) {
+            writeOut -text " $($addrs -join ', ')"
+        }
+    }
+    return $resolved
+}
+
 
 <###############################################################################
 # Setup                                                                        #
@@ -275,8 +308,9 @@ if ($help) {
     Exit
 }
 
-if (-Not $inFile -and -Not $ips) {
-    Throw "Please specify at least one of -i/--ips or -f/--inFile"
+# Check targets have been specified
+if (-Not $inFiles -and -Not $ips -and -Not $hostnames) {
+    Throw "Please specify at least one of -i/-ips, -n/-hostnames, or -f/-inFiles"
 }
 
 # Define verbosity
@@ -284,47 +318,64 @@ if ($v -Or $PSCmdlet.MyInvocation.BoundParameters['Verbose']) {
     $verbose = $true
 }
 
+# Initialise target list
+$targets = @()
+
 # Parse input files
-if ($inFile) {
-    if (-Not $ips) {
-        $ips = @()
-    }
-    foreach ($file in $inFile) {
+if ($inFiles) {
+    foreach ($file in $inFiles) {
         if (-Not ($file | Test-Path -PathType Leaf)) {
             Throw "'$file' is not a valid input file"
         }
         foreach ($line in Get-Content $file) {
-            $ips += $line.Trim()
+            try {
+                $targets += checkTargets -targets ($line.Trim())
+            } catch {
+                try {
+                    $targets += dnsLookup -targets ($line.Trim())
+                } catch {
+                    Throw "'$line' is not a valid target"
+                }
+            }
         }
     }
-} 
-
-# Prepare output files
-if ($outAll) {
-    $outTxt = $outAll
-    $outJson = $outAll
-}
-$cmd = $MyInvocation.Line
-if ($outTxt) {
-    if ($outTxt.Name -notmatch '\.txt$') {
-        $outTxt = "$($outTxt.Name).txt"
-    }
-    checkOutFile -file $outTxt
-    Out-File -InputObject "Command: $cmd`n" -FilePath $outTxt -Append
-}
-if ($outJson) {
-    if ($outJson.Name -notmatch '\.json$') {
-        $outJson = "$($outJson.Name).json"
-    }
-    checkOutFile -file $outJson
-    writeJson -json "{" -level 0 -file $outJson
-    writeJson -json "`"command`": `"$cmd`"," -level 1 -file $outJson
 }
 
-# Check targets
-$targets = checkTargets -targets $ips
+# Check IPs
+if ($ips) {
+    $targets += checkTargets -targets $ips
+}
+
+# Check hostnames
+if ($hostnames) {
+    $targets += dnsLookup -targets $hostnames
+}
+
+# Process target list
+$targets = $targets | Sort-Object -unique -Property { try {[Version]$_.IPAddressToString} catch {$_.IPAddressToString} }
 if ($randomise) {
     $targets = $targets | Sort-Object {Get-Random}
+}
+
+# Get service map
+if ($serviceMap) {
+    if (-Not ($serviceMap | Test-Path)) {
+       Throw "Service map file '$serviceMap' does not exist"
+    }
+    $csvPath = $serviceMap
+} else {
+   $csvPath = $defSvcMap
+}
+$svcMap = @()
+if ($csvPath | Test-Path) {
+   $csv = Import-Csv -Header 'Service', 'Port', 'Protocol' $csvPath
+   foreach ($row in $csv) {
+       $svcMap += (@{
+           Service = $row.("Service")
+           Port = [int]$row.("Port")
+           Protocol = $row.("Protocol").ToLower()
+       })
+   }
 }
 
 # Set default delay if no delay specified
@@ -357,25 +408,26 @@ if ($udp) {
     $protocol = "tcp"
 }
 
-# Get service map
-if ($serviceMap) {
-     if (-Not ($serviceMap | Test-Path)) {
-        Throw "Service map file '$serviceMap' does not exist"
-     }
-     $csvPath = $serviceMap
-} else {
-    $csvPath = $defSvcMap
+# Prepare output files
+if ($outAll) {
+    $outTxt = $outAll
+    $outJson = $outAll
 }
-$svcMap = @()
-if ($csvPath | Test-Path) {
-    $csv = Import-Csv -Header 'Service', 'Port', 'Protocol' $csvPath
-    foreach ($row in $csv) {
-        $svcMap += (@{
-            Service = $row.("Service")
-            Port = [int]$row.("Port")
-            Protocol = $row.("Protocol").ToLower()
-        })
+$cmd = $MyInvocation.Line
+if ($outTxt) {
+    if ($outTxt.Name -notmatch '\.txt$') {
+        $outTxt = "$($outTxt.Name).txt"
     }
+    checkOutFile -file $outTxt
+    Out-File -InputObject "Command: $cmd`n" -FilePath $outTxt -Append
+}
+if ($outJson) {
+    if ($outJson.Name -notmatch '\.json$') {
+        $outJson = "$($outJson.Name).json"
+    }
+    checkOutFile -file $outJson
+    writeJson -json "{" -level 0 -file $outJson
+    writeJson -json "`"command`": `"$cmd`"," -level 1 -file $outJson
 }
 
 

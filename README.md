@@ -7,9 +7,9 @@ This tool was designed for legal purposes only; users are responsible for ensuri
 # Usage
 ```
 SYNTAX
-    ps2.ps1 [-banners] [[-delay] <Int32>] [[-inFile] <FileInfo[]>] [-help] [[-ips] <String[]>] [[-serviceMap]  
-    <FileInfo>] [-noColour] [-noPing] [[-outAll] <FileInfo>] [[-outJson] <FileInfo>] [[-outTxt] <FileInfo>] [[-ports] <Int32[]>] [-randomise] [[-timeout]       
-    <Int32>] [-udp] [-v] [<CommonParameters>]
+    ps2.ps1 [-banners] [[-delay] <Int32>] [[-inFiles] <FileInfo[]>] [-help] [[-hostnames] <String[]>] [[-ips]  
+    <String[]>] [[-serviceMap] <FileInfo>] [-noColour] [-noPing] [[-outAll] <FileInfo>] [[-outJson] <FileInfo>] [[-outTxt] <FileInfo>] [[-ports] <Int32[]>]     
+    [-randomise] [[-timeout] <Int32>] [-udp] [-v]
 
 PARAMETERS
     -banners [<SwitchParameter>]
@@ -18,11 +18,14 @@ PARAMETERS
     -delay <Int32>
         (-d) Delay to use between each connection in milliseconds
 
-    -inFile <FileInfo[]>
+    -inFiles <FileInfo[]>
         (-f) File(s) containing targets to scan (1 per line)
 
     -help [<SwitchParameter>]
         (-h) Displays help information
+
+    -hostnames <String[]>
+        (-n) Hostname(s) of target(s) to scan
 
     -ips <String[]>
         (-i) IP address(es) of target(s) to scan (supports individual IPv4 addresses, IPv4 address ranges, IPv4 CIDR notation, and individual IPv6 addresses)   
