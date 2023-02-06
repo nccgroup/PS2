@@ -7,11 +7,9 @@ This tool was designed for legal purposes only; users are responsible for ensuri
 # Usage
 ```
 SYNTAX
-    ps2.ps1 [-banners] [-delay <Int32>] -inFile <FileInfo[]> [-help] [-serviceMap <FileInfo>] [-noColour]      
-    [-noPing] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-ports <Int32[]>] [-randomise] [-timeout <Int32>] [-udp] [-v]
-
-    ps2.ps1 [-banners] [-delay <Int32>] [-help] -ips <String[]> [-serviceMap <FileInfo>] [-noColour]
-    [-noPing] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-ports <Int32[]>] [-randomise] [-timeout <Int32>] [-udp] [-v]
+    ps2.ps1 [-banners] [[-delay] <Int32>] [[-inFile] <FileInfo[]>] [-help] [[-ips] <String[]>] [[-serviceMap]  
+    <FileInfo>] [-noColour] [-noPing] [[-outAll] <FileInfo>] [[-outJson] <FileInfo>] [[-outTxt] <FileInfo>] [[-ports] <Int32[]>] [-randomise] [[-timeout]       
+    <Int32>] [-udp] [-v] [<CommonParameters>]
 
 PARAMETERS
     -banners [<SwitchParameter>]
@@ -21,13 +19,13 @@ PARAMETERS
         (-d) Delay to use between each connection in milliseconds
 
     -inFile <FileInfo[]>
-        (-f) File(s) containing IP addresses to scan (1 per line)
+        (-f) File(s) containing targets to scan (1 per line)
 
     -help [<SwitchParameter>]
         (-h) Displays help information
 
     -ips <String[]>
-        (-i) IP address(es) of target(s) to scan
+        (-i) IP address(es) of target(s) to scan (supports individual IPv4 addresses, IPv4 address ranges, IPv4 CIDR notation, and individual IPv6 addresses)   
 
     -serviceMap <FileInfo>
         (-m) Service map to use (overrides default of <PS2_dir>/servicemap.csv)

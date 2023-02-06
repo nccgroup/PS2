@@ -17,11 +17,11 @@ PS2. If not, see https://www.gnu.org/licenses.
 .PARAMETER delay
 (-d) Delay to use between each connection in milliseconds
 .PARAMETER inFile
-(-f) File(s) containing IP addresses to scan (1 per line)
+(-f) File(s) containing targets to scan (1 per line)
 .PARAMETER help
 (-h) Displays help information
 .PARAMETER ips
-(-i) IP address(es) of target(s) to scan
+(-i) IP address(es) of target(s) to scan (supports individual IPv4 addresses, IPv4 address ranges, IPv4 CIDR notation, and individual IPv6 addresses)
 .PARAMETER serviceMap
 (-m) Service map to use (overrides default of <PS2_dir>/servicemap.csv)
 .PARAMETER noColour
@@ -54,9 +54,9 @@ PS2. If not, see https://www.gnu.org/licenses.
 [cmdletbinding()]
 param([Parameter(Mandatory=$false)][alias("b")][switch] $banners,
       [Parameter(Mandatory=$false)][alias("d")][int] $delay,
-      [Parameter(Mandatory=$true, ParameterSetName = 'files')][alias("f")][System.IO.FileInfo[]] $inFile,
+      [Parameter(Mandatory=$false)][alias("f")][System.IO.FileInfo[]] $inFile,
       [Parameter(Mandatory=$false)][alias("h")][switch] $help,
-      [Parameter(Mandatory=$true, ParameterSetName = 'ips')][alias("i")][string[]] $ips,
+      [Parameter(Mandatory=$false)][alias("i")][string[]] $ips,
       [Parameter(Mandatory=$false)][alias("m")][System.IO.FileInfo] $serviceMap,
       [Parameter(Mandatory=$false)][alias("nC")][switch] $noColour,
       [Parameter(Mandatory=$false)][alias("nP")][switch] $noPing,
@@ -221,23 +221,6 @@ function checkTargets {
             $valid += $ipObj
             continue
         }
-        $fileObj = $target -as [System.IO.FileInfo]
-        if (($fileObj -ne $null) -And ($fileObj | Test-Path -PathType Leaf)) {
-            $subTargets = @()
-            foreach ($line in Get-Content $fileObj) {
-                $line = $line.Trim()
-                if ($line) {
-                    $subTargets += $line
-                }
-            }
-            try {
-                $fileValid = checkTargets -targets $subTargets
-                $valid += $fileValid
-                continue
-            } catch {
-                Throw "The following error occurred when processing the file '$target': $_"
-            }   
-        }
         $range, $cidr = $target.split("/")
         $octs = $range.split(".")
         if ($octs.Length -eq 4) {
@@ -292,6 +275,10 @@ if ($help) {
     Exit
 }
 
+if (-Not $inFile -and -Not $ips) {
+    Throw "Please specify at least one of -i/--ips or -f/--inFile"
+}
+
 # Define verbosity
 if ($v -Or $PSCmdlet.MyInvocation.BoundParameters['Verbose']) {
     $verbose = $true
@@ -299,7 +286,9 @@ if ($v -Or $PSCmdlet.MyInvocation.BoundParameters['Verbose']) {
 
 # Parse input files
 if ($inFile) {
-    $ips = @()
+    if (-Not $ips) {
+        $ips = @()
+    }
     foreach ($file in $inFile) {
         if (-Not ($file | Test-Path -PathType Leaf)) {
             Throw "'$file' is not a valid input file"
@@ -425,7 +414,9 @@ foreach ($ip in $targets) {
         }
         $results["$ip"]["Status"] = "Up"
         $results["$ip"]["StatusColour"] = "DarkGreen"
-        writeOut -text "Host is " -NoNewLine
+        if ($verbose) {
+            writeOut -text "Host is " -NoNewLine
+        }
         if ($ping) {
             if ($verbose) {
                 writeOut -text "up" -foreground "DarkGreen"
