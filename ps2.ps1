@@ -136,7 +136,6 @@ function writeOut {
          )
     if ($file) {
         Out-File -InputObject "$text" -FilePath $file -Append -NoNewline:$NoNewLine
-        #$text | Tee-Object -FilePath $file -Append
     }
     if ($noColour -Or -Not $foreground) {
         $foreground = [System.Console]::ForegroundColor
@@ -441,14 +440,25 @@ writeOut -text "PS2 scan commenced at: $startTime" -file $outTxt
 $results = @{}
 $encoder = new-object system.text.asciiencoding
 writeJson -json "`"hosts`": [" -level 1 -file $outJson
+$numTargets = $targets.Length
+$count = 0
 foreach ($ip in $targets) {
+    if (-Not $verbose) {
+        $progressParams = @{
+            Activity = "Scanning $numTargets hosts"
+            Status = "($count/$numTargets)"
+            PercentComplete = [math]::Round(($count / $numTargets) * 100)
+            CurrentOperation = "Scanning $ip"
+        }
+        Write-Progress @progressParams
+    }
     $results["$ip"] = @{Ports = @()}
     writeJson -json "{" -level 2 -file $outJson
     writeJson -json "`"ip`": `"$($ip.IPAddressToString)`"," -level 3 -file $outJson
     # Ping host
     if (-Not $noPing) {
         if ($verbose) {
-            writeOut -NoNewLine "Pinging $($ip.IPAddressToString)... "
+            writeOut -NoNewLine -text "Pinging $($ip.IPAddressToString)... "
         }
         if ([version]$PSVersionTable.PSVersion -lt [version]"6.0.0") {
             try {
@@ -620,6 +630,10 @@ foreach ($ip in $targets) {
     }
     $results["$ip"]["Ports"] = $results["$ip"]["Ports"] | Sort-Object {$_.Protocol}, {$_.Port}
     Start-Sleep -Milliseconds $delay
+    $count += 1
+    if ($verbose) {
+        writeOut -text "Completed scan for $ip ($count/$numTargets)"
+    }
 }
 writeJson -json "]," -level 1 -file $outJson
 $results = $results | Sort-Object {$_.GetEnumerator().Name}
@@ -629,10 +643,12 @@ $results = $results | Sort-Object {$_.GetEnumerator().Name}
 # Output Results                                                               #
 ###############################################################################>
 
+writeOut -text "" -file $outTxt
+writeOut -text "Scan results:" -file $outTxt
 foreach ($result in $results.GetEnumerator()) {
     writeOut -text $("_" * 80) -file $outTxt
     writeOut -text "`nHost:   $($result.Name)" -file $outTxt
-    writeout -NoNewLine -text "Status: "
+    writeout -NoNewLine -text "Status: " -file $outTxt
     writeOut -text "$($result.Value["Status"])`n" -file $outTxt -foreground $result.Value["StatusColour"]
     if ($result.Value["Status"] -eq "Down") {
         writeOut -text "If you believe this host is up, rerun the scan using the -noPing (-nP) option to treat all hosts as up." -file $outTxt
@@ -666,4 +682,5 @@ $scanDurStr = $scanDur.ToString("dd'd 'hh'h 'mm'm 'ss's'")
 writeJson -json "`"endTime`": `"$endTime`"," -level 1 -file $outJson
 writeJson -json "`"duration`": `"$scanDurStr`"" -level 1 -file $outJson
 writeJson -json "}" -level 0 -file $outJson
-writeOut -text "`nScan completed at: $endTime (Duration: $scanDurStr)" -file $outTxt
+writeOut -text "`nScan completed at: $endTime (Duration: $scanDurStr)" -file $outTxt -NoNewLine
+writeOut -text "" # New line in terminal but not in output file
