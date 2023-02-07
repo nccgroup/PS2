@@ -7,7 +7,18 @@ This tool was designed for legal purposes only; users are responsible for ensuri
 # Usage
 ```
 SYNTAX
-    ps2.ps1 [-banners] [[-delay] <Int32>] [[-inFiles] <FileInfo[]>] [-help] [[-hostnames] <String[]>] [[-ips] <String[]>] [[-serviceMap] <FileInfo>] [-noColour] [-noPing] [-overwrite] [[-outAll] <FileInfo>] [[-outJson] <FileInfo>] [[-outTxt] <FileInfo>] [[-ports] <Int32[]>] [-randomise] [[-timeout] <Int32>] [-traceroute] [-udp] [-v]
+    ps2.ps1 [-banners] [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>] [-serviceMap <FileInfo>] 
+    [-noColour] [-noPing] [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-ports <Int32[]>] 
+    [-randomise] [-timeout <Int32>] [-traceroute] -udp [-v]
+
+    ps2.ps1 [-banners] [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>] [-serviceMap <FileInfo>] 
+    [-noColour] [-noPing] [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-ports <Int32[]>] 
+    [-randomise] [-timeout <Int32>] [-traceroute] -tcp [-v] [<CommonParameters>]
+
+    ps2.ps1 [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>] [-noColour] [-overwrite] [-outAll 
+    <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-randomise] [-timeout <Int32>] [-traceroute] -ping [-v]
+
+    ps2.ps1 -help
 
 PARAMETERS
     -banners [<SwitchParameter>]
@@ -21,7 +32,7 @@ PARAMETERS
 
     -help [<SwitchParameter>]
         (-h) Displays help information
-
+        
     -hostnames <String[]>
         (-n) Hostname(s) of target(s) to scan
 
@@ -45,7 +56,7 @@ PARAMETERS
 
     -outJson <FileInfo>
         (-oJ) Save output in JSON format to a specified file
-        
+
     -outTxt <FileInfo>
         (-oT) Save output in txt format to a specified file
 
@@ -61,8 +72,14 @@ PARAMETERS
     -traceroute [<SwitchParameter>]
         Trace hop path to each host
 
+    -ping [<SwitchParameter>]
+        (-sP) Perform a ping scan
+
+    -tcp [<SwitchParameter>]
+        (-sT) Perform a TCP connect scan
+
     -udp [<SwitchParameter>]
-        (-u) Perform a UDP scan instead of TCP connect scan
+        (-sU) Perform a UDP scan
 
     -v [<SwitchParameter>]
         (-Verbose, -vb) Show verbose output
