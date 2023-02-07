@@ -704,7 +704,7 @@ foreach ($result in $results.GetEnumerator()) {
     writeout -NoNewLine -text "Status: " -file $outTxt
     writeOut -text "$($result.Value["Status"])" -file $outTxt -foreground $result.Value["StatusColour"]
     if ($result.Value["Status"] -eq "Down") {
-        writeOut -text "If you believe this host is up, rerun the scan using the -noPing (-nP) option to treat all hosts as up." -file $outTxt
+        writeOut -text "If you believe this host is up, rerun the scan using the -nP/-noPing option to treat all hosts as up." -file $outTxt
         continue
     }
     if (-Not $ping) {
