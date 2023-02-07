@@ -177,27 +177,13 @@ function writeOut {
     Write-Host "$text" -ForegroundColor $foreground -BackgroundColor $background -NoNewline:$NoNewLine
 }
 
-function writeJson {
+function saveJson {
     <#
     .SYNOPSIS
     Writes output to JSON file
-    .PARAMETER json
-    JSON to write (required)
-    .PARAMETER level
-    Indentation level (required)
-    .PARAMETER file
-    JSON file to write to
     #>
-    param([Parameter(Mandatory=$true)][string] $json,
-          [Parameter(Mandatory=$true)][int] $level,
-          [Parameter(Mandatory=$false)][string] $file
-         )
-    if ($file) {
-        $indent = "    " * $level
-        $json = $json.TrimEnd()
-        $json = $json.replace("\", "\\")
-        $json = $json.replace([Environment]::NewLine, "\n")
-        Out-File -InputObject "$indent$json" -FilePath $file -Append
+    if ($outJson -and $jsonData) {
+        $jsonData | ConvertTo-Json -Depth 5 | Out-File -FilePath $outJson
     }
 }
      
@@ -436,10 +422,10 @@ if (-Not $ping) {
 }
 
 # Set protocol
-if ($udp) {
-    $protocol = "udp"
-} else {
+if ($tcp) {
     $protocol = "tcp"
+} elseif ($udp) {
+    $protocol = "udp"
 }
 
 # Prepare output files
@@ -460,8 +446,8 @@ if ($outJson) {
         $outJson = "$($outJson.Name).json"
     }
     checkOutFile -file $outJson
-    writeJson -json "{" -level 0 -file $outJson
-    writeJson -json "`"command`": `"$cmd`"," -level 1 -file $outJson
+    $jsonData = [ordered]@{"command" = $cmd}
+    saveJson -file $outJson
 }
 
 
@@ -476,8 +462,10 @@ if ($tcp) {
 } elseif ($ping) {
     $scanType = "ping"
 }
+$jsonData.add("scanType", $scanType.ToLower())
 $startTime = Get-Date
-writeJson -json "`"startTime`": `"$startTime`"," -level 1 -file $outJson
+$jsonData.add("startTime", $startTime.ToString())
+saveJson
 if ($scanType) {
     writeOut -text "PS2 $scanType scan commenced at: $startTime" -file $outTxt
 } else {
@@ -485,7 +473,7 @@ if ($scanType) {
 }
 $results = @{}
 $encoder = new-object system.text.asciiencoding
-writeJson -json "`"hosts`": [" -level 1 -file $outJson
+$jsonData.add("hosts", [hashtable[]]$())
 $numTargets = $targets.Length
 $count = 0
 foreach ($ip in $targets) {
@@ -499,8 +487,7 @@ foreach ($ip in $targets) {
         Write-Progress @progressParams
     }
     $results["$ip"] = @{Ports = @()}
-    writeJson -json "{" -level 2 -file $outJson
-    writeJson -json "`"ip`": `"$($ip.IPAddressToString)`"," -level 3 -file $outJson
+    $hostJson = [ordered]@{"ip" = $($ip.IPAddressToString)}
     # Ping host
     if (-Not $noPing) {
         if ($verbose) {
@@ -529,23 +516,20 @@ foreach ($ip in $targets) {
             if ($verbose) {
                 writeOut -text "up" -foreground "DarkGreen"
             }
-            writeJson -json "`"status`": `"Up`"," -level 3 -file $outJson
+            $hostJson.add("status", "up")
         } else {
             $results["$ip"]["Status"] = "Down"
             $results["$ip"]["StatusColour"] = "DarkRed"
             if ($verbose) {
                 writeOut -text "down" -foreground "DarkRed"
             }
-            writeJson -json "`"status`": `"Down`"," -level 3 -file $outJson
+            $hostJson.add("status", "down")
             if ($traceroute) {
-                writeJson -json "`"traceroute`": null," -level 3 -file $outJson
+                $hostJson.add("traceroute", $null)
             }
-            writeJson -json "`"ports`": null" -level 3 -file $outJson
-            if ($ip -eq $targets[-1]) {
-                writeJson -json "}" -level 2 -file $outJson
-            } else {
-                writeJson -json "}," -level 2 -file $outJson
-            }
+            $hostJson.add("ports", $null)
+            $jsonData["hosts"] += ,@($hostJson)
+            saveJson
             continue
         }
     } else {
@@ -554,25 +538,21 @@ foreach ($ip in $targets) {
         }
         $results["$ip"]["Status"] = "Assumed Up"
         $results["$ip"]["StatusColour"] = "Yellow"
-        writeJson -json "`"status`": `"Assumed Up`"," -level 3 -file $outJson
+        $hostJson.add("status", "assumed up")
     }
     if ($traceroute) {
         if ($verbose) {
             writeOut -text "Performing traceroute for $ip... " -NoNewLine
         }
         $results["$ip"]["Traceroute"] = @()
-        writeJson -json "`"traceroute`": {" -level 3 -file $outJson
+        $hostJson.add("traceroute", @{})
         try {
             $Global:ProgressPreference = 'SilentlyContinue'
             $tr = Test-NetConnection -TraceRoute $ip -WarningAction:Stop 3>$null | Select-Object -ExpandProperty TraceRoute
             $Global:ProgressPreference = 'Continue'
             $trCount = 1
             foreach ($hop in $tr) {
-                if ($trCount -eq $tr.Length) {
-                    writeJson -json "`"${trCount}`": `"$hop`"" -level 4 -file $outJson
-                } else {
-                    writeJson -json "`"${trCount}`": `"$hop`"," -level 4 -file $outJson
-                }
+                $hostJson["traceroute"].add("$trCount", $hop)
                 $results["$ip"]["Traceroute"] += @{"Hop" = $trCount; "Host" = $hop}
                 $trCount += 1
             }
@@ -581,20 +561,16 @@ foreach ($ip in $targets) {
             }
         } catch {
             $results["$ip"]["Traceroute"] += @{"Hop" = 0; "Host" = "Traceroute failed"}
-            writeJson -json "`"0`": `"Traceroute failed`"" -level 4 -file $outJson
+            $hostJson["traceroute"].add("0", "traceroute failed")
             if ($verbose) {
                 writeOut -text "Failed" -foreground "DarkRed"
             }
         }
-        if ($pingRes) {
-            writeJson -json "}" -level 3 -file $outJson
-        } else {
-            writeJson -json "}," -level 3 -file $outJson
-        }
     }
     if (-Not $ping) {
-        writeJson -json "`"ports`": [" -level 3 -file $outJson
+        $hostJson.add("ports", @())
         foreach ($port in $ports) {
+            $portJson = [ordered]@{}
             Start-Sleep -Milliseconds $delay
             if ($verbose) {
                 writeOut -NoNewLine -text "Scanning $($ip.IPAddressToString) port $port/$protocol... "
@@ -640,10 +616,8 @@ foreach ($ip in $targets) {
                     Start-Sleep -Milliseconds $delay
                 }
                 if ($banners) {
-                    $jsonBanner = "`"$($result["Banner"])`""
                     if ($result["Banner"].Trim() -eq "") {
                         $result["Banner"] = "<No Banner>"
-                        $jsonBanner = "null"
                     }
                 }
             } elseif ($tcp) {
@@ -663,10 +637,8 @@ foreach ($ip in $targets) {
                             $byte = $stream.ReadByte()
                             $result["Banner"] = $encoder.GetString($byte) -replace "`n"," " -replace "`r"," "
                         }
-                        $jsonBanner = "`"$($result["Banner"])`""
                         if ($result["Banner"].Trim() -eq "") {
                             $result["Banner"] = "<No Banner>"
-                            $jsonBanner = "null"
                         }
                     }
                 } else {
@@ -674,7 +646,6 @@ foreach ($ip in $targets) {
                     $result["StatusColour"] = "DarkRed"
                     if ($banners) {
                         $result["Banner"] = "<No Banner>"
-                        $jsonBanner = "null"
                     }
                 }
                 $socket.Close()
@@ -693,38 +664,32 @@ foreach ($ip in $targets) {
             if ($verbose) {
                 writeOut -text $result["Status"] -foreground $result["StatusColour"]
             }
-            writeJson -json "{" -level 4 -file $outJson
-            writeJson -json "`"port`": $port," -level 5 -file $outJson
-            writeJson -json "`"protocol`": `"$protocol`"," -level 5 -file $outJson
-            writeJson -json "`"status`": `"$($result["Status"])`"," -level 5 -file $outJson
+            $portJson.add("port", $port)
+            $portJson.add("protocol", $protocol)
+            $portJson.add("status", $result["Status"].ToLower())
+            $portJson.add("service", $result["Service"])
             if ($banners) {
-                writeJson -json "`"service`": `"$($result["Service"])`"," -level 5 -file $outJson
-                writeJson -json "`"banner`": $jsonBanner" -level 5 -file $outJson
-            } else {
-                writeJson -json "`"service`": `"$($result["Service"])`"" -level 5 -file $outJson
-            }
-            if ($port -eq $ports[-1]) {
-                writeJson -json "}" -level 4 -file $outJson
-            } else {
-                writeJson -json "}," -level 4 -file $outJson
+                $jsonBanner = $result["Banner"]
+                if ($jsonBanner -eq "<No Banner>") {
+                    $jsonBanner = $null
+                }
+                $portJson.add("banner", $jsonBanner)
             }
             $results["$ip"]["Ports"] += $result
+            $hostJson["ports"] += $portJson
         }
-        writeJson -json "]" -level 3 -file $outJson
         $results["$ip"]["Ports"] = $results["$ip"]["Ports"] | Sort-Object {$_.Protocol}, {$_.Port}
+        $hostJson["ports"] = $hostJson["ports"] | Sort-Object {$_.Protocol}, {$_.Port}
         Start-Sleep -Milliseconds $delay
     }
-    if ($ip -eq $targets[-1]) {
-        writeJson -json "}" -level 2 -file $outJson
-    } else {
-        writeJson -json "}," -level 2 -file $outJson
-    }
+    $jsonData["hosts"] += ,@($hostJson)
+    $jsonData["hosts"] = $jsonData["hosts"] | Sort-Object {try {[Version]$_["ip"]} catch {$_["ip"]}} # Broken here
+    saveJson
     $count += 1
     if ($verbose) {
         writeOut -text "Completed scan for $ip ($count/$numTargets)"
     }
 }
-writeJson -json "]," -level 1 -file $outJson
 $results = $results | Sort-Object {$_.GetEnumerator().Name}
 
 
@@ -782,8 +747,8 @@ writeOut -text $("_" * 80) -file $outTxt
 $endTime = Get-Date
 $scanDur = New-TimeSpan -start $startTime -End $endTime
 $scanDurStr = $scanDur.ToString("dd'd 'hh'h 'mm'm 'ss's'")
-writeJson -json "`"endTime`": `"$endTime`"," -level 1 -file $outJson
-writeJson -json "`"duration`": `"$scanDurStr`"" -level 1 -file $outJson
-writeJson -json "}" -level 0 -file $outJson
+$jsonData.add("endTime", $endTime.ToString())
+$jsonData.add("duration", $scanDurStr)
+saveJson
 writeOut -text "`nScan completed at: $endTime (Duration: $scanDurStr)" -file $outTxt -NoNewLine
 writeOut -text "" # New line in terminal but not in output file
