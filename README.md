@@ -7,16 +7,17 @@ This tool was designed for legal purposes only; users are responsible for ensuri
 # Usage
 ```
 SYNTAX
-    ps2.ps1 [-banners] [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>] [-serviceMap <FileInfo>] 
-    [-noColour] [-noPing] [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-ports <Int32[]>] 
-    [-randomise] [-timeout <Int32>] [-traceroute] -udp [-v]
+    ps2.ps1 [-banners] [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>]      
+    [-serviceMap <FileInfo>] [-noColour] [-noPing] [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] 
+    [-ports <Int32[]>] [-quick] [-randomise] [-timeout <Int32>] [-topPorts <Int32>] [-traceroute] -udp [-v]
 
-    ps2.ps1 [-banners] [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>] [-serviceMap <FileInfo>] 
-    [-noColour] [-noPing] [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-ports <Int32[]>] 
-    [-randomise] [-timeout <Int32>] [-traceroute] -tcp [-v] [<CommonParameters>]
+    ps2.ps1 [-banners] [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>]      
+    [-serviceMap <FileInfo>] [-noColour] [-noPing] [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] 
+    [-ports <Int32[]>] [-quick] [-randomise] [-timeout <Int32>] [-topPorts <Int32>] [-traceroute] -tcp [-v]
 
-    ps2.ps1 [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>] [-noColour] [-overwrite] [-outAll 
-    <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-randomise] [-timeout <Int32>] [-traceroute] -ping [-v]
+    ps2.ps1 [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>] [-noColour]     
+    [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-randomise] [-timeout <Int32>] [-traceroute] 
+    -ping [-v]
 
     ps2.ps1 -help
 
@@ -32,7 +33,7 @@ PARAMETERS
 
     -help [<SwitchParameter>]
         (-h) Displays help information
-        
+
     -hostnames <String[]>
         (-n) Hostname(s) of target(s) to scan
 
@@ -61,13 +62,19 @@ PARAMETERS
         (-oT) Save output in txt format to a specified file
 
     -ports <Int32[]>
-        (-p) Port(s) to scan (overrides default of top 20 commonly used ports)
+        (-p) Port(s) to scan (overrides default of top 1000 commonly used ports)
+
+    -quick [<SwitchParameter>]
+        (-q) Scan only the top 100 most commonly used ports
 
     -randomise [<SwitchParameter>]
         (-r) Randomise the order in which hosts and ports are scanned
 
     -timeout <Int32>
         (-t) Timeout to use for connections in milliseconds (overrides default of 1000ms)
+
+    -topPorts <Int32>
+        Scan the top n most commonly used ports (maximum 1000)
 
     -traceroute [<SwitchParameter>]
         Trace hop path to each host
