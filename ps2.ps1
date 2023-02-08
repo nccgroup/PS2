@@ -8,10 +8,16 @@ Released as open source by NCC Group Plc - http://www.nccgroup.com/
 
 Developed by James Conlan, James.Conlan@nccgroup.com
 
-<GitHub Link>
+https://github.com/nccgroup/PS2
 
 You should have received a copy of the GNU General Public License along with 
 PS2. If not, see https://www.gnu.org/licenses.
+
+This tool was designed for legal purposes only; users are responsible for
+ensuring that their use of this tool complies with all appliable laws. By using
+this tool, you take full responsibility for any actions you perform. Neither NCC
+Group nor the author accept any liability for damage caused by the use of this
+tool.
 .PARAMETER banners
 (-b) Attempt to grab banners from open ports
 .PARAMETER delay
