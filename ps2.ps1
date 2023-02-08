@@ -488,8 +488,8 @@ foreach ($ip in $targets) {
     }
     $results["$ip"] = @{Ports = @()}
     $hostJson = [ordered]@{"ip" = $($ip.IPAddressToString)}
-    # Ping host
     if (-Not $noPing) {
+        # Ping host
         if ($verbose) {
             writeOut -NoNewLine -text "Pinging $($ip.IPAddressToString)... "
         }
@@ -541,6 +541,7 @@ foreach ($ip in $targets) {
         $hostJson.add("status", "assumed up")
     }
     if ($traceroute) {
+        # Traceroute
         if ($verbose) {
             writeOut -text "Performing traceroute for $ip... " -NoNewLine
         }
