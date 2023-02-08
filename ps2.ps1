@@ -636,7 +636,7 @@ foreach ($ip in $targets) {
                         $stream = $socket.GetStream()
                         while ($stream.DataAvailable) {
                             $byte = $stream.ReadByte()
-                            $result["Banner"] = $encoder.GetString($byte) -replace "`n"," " -replace "`r"," "
+                            $result["Banner"] += $encoder.GetString($byte) -replace "`n"," " -replace "`r"," "
                         }
                         if ($result["Banner"].Trim() -eq "") {
                             $result["Banner"] = "<No Banner>"
