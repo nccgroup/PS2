@@ -8,16 +8,18 @@ This tool was designed for legal purposes only; users are responsible for ensuri
 ```
 SYNTAX
     ps2.ps1 [-banners] [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>]      
-    [-serviceMap <FileInfo>] [-noColour] [-noPing] [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] 
-    [-ports <Int32[]>] [-quick] [-randomise] [-timeout <Int32>] [-topPorts <Int32>] [-traceroute] -udp [-v]
+    [-serviceMap <FileInfo>] [-noColour] [-noPing] [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>]
+    [-outTxt <FileInfo>] [-ports <Int32[]>] [-quick] [-randomise] [-timeout <Int32>] [-topPorts <Int32>]
+    [-traceroute] -udp [-v]
 
     ps2.ps1 [-banners] [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>]      
-    [-serviceMap <FileInfo>] [-noColour] [-noPing] [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] 
-    [-ports <Int32[]>] [-quick] [-randomise] [-timeout <Int32>] [-topPorts <Int32>] [-traceroute] -tcp [-v]
+    [-serviceMap <FileInfo>] [-noColour] [-noPing] [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>]
+    [-outTxt <FileInfo>] [-ports <Int32[]>] [-quick] [-randomise] [-timeout <Int32>] [-topPorts <Int32>]
+    [-traceroute] -tcp [-v]
 
     ps2.ps1 [-delay <Int32>] [-inFiles <FileInfo[]>] [-hostnames <String[]>] [-ips <String[]>] [-noColour]     
-    [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-randomise] [-timeout <Int32>] [-traceroute] 
-    -ping [-v]
+    [-overwrite] [-outAll <FileInfo>] [-outJson <FileInfo>] [-outTxt <FileInfo>] [-randomise]
+    [-timeout <Int32>] [-traceroute] -ping [-v]
 
     ps2.ps1 -help
 
@@ -38,7 +40,8 @@ PARAMETERS
         (-n) Hostname(s) of target(s) to scan
 
     -ips <String[]>
-        (-i) IP address(es) of target(s) to scan (supports individual IPv4 addresses, IPv4 address ranges, IPv4 CIDR notation, and individual IPv6 addresses)   
+        (-i) IP address(es) of target(s) to scan (supports individual IPv4 addresses, IPv4 address ranges,
+        IPv4 CIDR notation, and individual IPv6 addresses)   
 
     -serviceMap <FileInfo>
         (-m) Service map to use (overrides default of <PS2_dir>/servicemap.csv)
@@ -53,7 +56,8 @@ PARAMETERS
         (-o) Force output files to be overwritten if they exist and do not prompt for confirmation
 
     -outAll <FileInfo>
-        (-oA) Save output in txt and JSON formats to files with a specified name (supersedes -oJ and -oT options)
+        (-oA) Save output in txt and JSON formats to files with a specified name (supersedes -oJ and -oT
+        options)
 
     -outJson <FileInfo>
         (-oJ) Save output in JSON format to a specified file
