@@ -66,7 +66,7 @@ PARAMETERS
         (-oT) Save output in txt format to a specified file
 
     -ports <Int32[]>
-        (-p) Port(s) to scan (overrides default of top 1000 commonly used ports)
+        (-p) Port(s) to scan [supports PowerShell ranges e.g. use "-p (1..65535)" to scan all ports] (overrides default of top 1000 commonly used ports)
 
     -quick [<SwitchParameter>]
         (-q) Scan only the top 100 most commonly used ports
