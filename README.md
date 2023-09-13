@@ -7,9 +7,7 @@ This tool was designed for legal purposes only; users are responsible for ensuri
 # Usage
 ```
 SYNTAX
-    ps2.ps1 [-banners] [[-delay] <Int32>] [[-inFiles] <FileInfo[]>] [-help] [[-hostnames] <String[]>] [[-ips]  
-    <String[]>] [[-serviceMap] <FileInfo>] [-noColour] [-noPing] [-overwrite] [[-outAll] <FileInfo>] [[-outJson] <FileInfo>] [[-outTxt] <FileInfo>] [[-ports]   
-    <Int32[]>] [-randomise] [[-timeout] <Int32>] [-udp] [-v]
+    ps2.ps1 [-banners] [[-delay] <Int32>] [[-inFiles] <FileInfo[]>] [-help] [[-hostnames] <String[]>] [[-ips] <String[]>] [[-serviceMap] <FileInfo>] [-noColour] [-noPing] [-overwrite] [[-outAll] <FileInfo>] [[-outJson] <FileInfo>] [[-outTxt] <FileInfo>] [[-ports] <Int32[]>] [-randomise] [[-timeout] <Int32>] [-traceroute] [-udp] [-v]
 
 PARAMETERS
     -banners [<SwitchParameter>]
@@ -47,7 +45,7 @@ PARAMETERS
 
     -outJson <FileInfo>
         (-oJ) Save output in JSON format to a specified file
-
+        
     -outTxt <FileInfo>
         (-oT) Save output in txt format to a specified file
 
@@ -59,6 +57,9 @@ PARAMETERS
 
     -timeout <Int32>
         (-t) Timeout to use for connections in milliseconds (overrides default of 1000ms)
+
+    -traceroute [<SwitchParameter>]
+        Trace hop path to each host
 
     -udp [<SwitchParameter>]
         (-u) Perform a UDP scan instead of TCP connect scan

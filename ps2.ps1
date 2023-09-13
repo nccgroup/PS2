@@ -44,6 +44,8 @@ PS2. If not, see https://www.gnu.org/licenses.
 (-r) Randomise the order in which hosts and ports are scanned
 .PARAMETER timeout
 (-t) Timeout to use for connections in milliseconds (overrides default of 1000ms)
+.PARAMETER traceroute
+Trace hop path to each host
 .PARAMETER udp
 (-u) Perform a UDP scan instead of TCP connect scan
 .PARAMETER v
@@ -72,6 +74,7 @@ param([Parameter(Mandatory=$false)][alias("b")][switch] $banners,
       [Parameter(Mandatory=$false)][alias("p")][int[]][ValidateRange(0, 65535)] $ports,
       [Parameter(Mandatory=$false)][alias("r")][switch] $randomise,
       [Parameter(Mandatory=$false)][alias("t")][int][ValidateRange(0, [int]::MaxValue)] $timeout,
+      [Parameter(Mandatory=$false)][switch] $traceroute,
       [Parameter(Mandatory=$false)][alias("u")][switch] $udp,
       [Parameter(Mandatory=$false)][switch] $v
      )
@@ -494,7 +497,10 @@ foreach ($ip in $targets) {
                 writeOut -text "down" -foreground "DarkRed"
             }
             writeJson -json "`"status`": `"Down`"," -level 3 -file $outJson
-            writeJson -json "`"ports`": []" -level 3 -file $outJson
+            if ($traceroute) {
+                writeJson -json "`"traceroute`": null," -level 3 -file $outJson
+            }
+            writeJson -json "`"ports`": null" -level 3 -file $outJson
             if ($ip -eq $targets[-1]) {
                 writeJson -json "}" -level 2 -file $outJson
             } else {
@@ -509,6 +515,30 @@ foreach ($ip in $targets) {
         $results["$ip"]["Status"] = "Assumed Up"
         $results["$ip"]["StatusColour"] = "Yellow"
         writeJson -json "`"status`": `"Assumed Up`"," -level 3 -file $outJson
+    }
+    if ($traceroute) {
+        if ($verbose) {
+            writeOut -text "Performing traceroute for $ip... " -NoNewLine
+        }
+        $Global:ProgressPreference = 'SilentlyContinue'
+        $tr = Test-NetConnection -TraceRoute $ip | Select-Object -ExpandProperty TraceRoute
+        $Global:ProgressPreference = 'Continue'
+        writeJson -json "`"traceroute`": {" -level 3 -file $outJson
+        $trCount = 1
+        $results["$ip"]["Traceroute"] = @()
+        foreach ($hop in $tr) {
+            if ($trCount -eq $tr.Length) {
+                writeJson -json "`"${trCount}`": `"$hop`"" -level 4 -file $outJson
+            } else {
+                writeJson -json "`"${trCount}`": `"$hop`"," -level 4 -file $outJson
+            }
+            $results["$ip"]["Traceroute"] += @{"Hop" = $trCount; "Host" = $hop}
+            $trCount += 1
+        }
+        writeJson -json "}," -level 3 -file $outJson
+        if ($verbose) {
+            writeOut -text "Done"
+        }
     }
     writeJson -json "`"ports`": [" -level 3 -file $outJson
     foreach ($port in $ports) {
@@ -646,17 +676,17 @@ $results = $results | Sort-Object {$_.GetEnumerator().Name}
 # Output Results                                                               #
 ###############################################################################>
 
-writeOut -text "" -file $outTxt
-writeOut -text "Scan results:" -file $outTxt
+writeOut -text "`nScan results:" -file $outTxt
 foreach ($result in $results.GetEnumerator()) {
     writeOut -text $("_" * 80) -file $outTxt
     writeOut -text "`nHost:   $($result.Name)" -file $outTxt
     writeout -NoNewLine -text "Status: " -file $outTxt
-    writeOut -text "$($result.Value["Status"])`n" -file $outTxt -foreground $result.Value["StatusColour"]
+    writeOut -text "$($result.Value["Status"])" -file $outTxt -foreground $result.Value["StatusColour"]
     if ($result.Value["Status"] -eq "Down") {
         writeOut -text "If you believe this host is up, rerun the scan using the -noPing (-nP) option to treat all hosts as up." -file $outTxt
         continue
     }
+    writeOut -text "" -file $outTxt
     if ($banners) {
         $outTable = $result.Value["Ports"] | ForEach-Object {[PSCustomObject]$_} | Format-Table -AutoSize -Property @{L='Host'; E={$result.Name}}, @{L='Port'; E={"$($_.Port)/$($_.Protocol)"}}, "Status", "Service", "Banner"
     } else {
@@ -676,6 +706,16 @@ foreach ($result in $results.GetEnumerator()) {
             $fg = "DarkRed"
         }
         writeOut -text $line -file $outTxt -foreground $fg
+    }
+    if ($traceroute) {
+        writeOut -text "`nTraceroute:`n" -file $outTxt
+        $trTable = "$($result.Value["Traceroute"] | ForEach-Object {[PSCustomObject]$_} | Sort-Object Hop | Format-Table -AutoSize -Property "Hop", "Host" | Out-String)".Trim()
+        foreach($line in $trTable.Split([Environment]::NewLine)) {
+            if ($line -eq "") {
+            continue
+        }
+            writeOut -text "    $line" -file $outTxt
+        }
     }
 }
 writeOut -text $("_" * 80) -file $outTxt
