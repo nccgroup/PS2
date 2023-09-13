@@ -94,6 +94,30 @@ PARAMETERS
 
     -v [<SwitchParameter>]
         (-Verbose, -vb) Show verbose output
+
+    -------------------------- EXAMPLE 1 --------------------------
+
+    PS C:\>ps2.ps1 -sT -i 192.168.1.1
+    
+    Perform a TCP connect scan against the top 1000 most commonly used ports
+
+    -------------------------- EXAMPLE 2 --------------------------
+
+    PS C:\>ps2.ps1 -sT -p (1..65535) -i 192.168.1.1
+
+    Perform a TCP connect scan against all ports
+
+    -------------------------- EXAMPLE 3 --------------------------
+
+    PS C:\>ps2.ps1 -sU -i 192.168.1.1
+
+    Perform a UDP scan against the top 1000 most commonly used ports
+
+    -------------------------- EXAMPLE 4 --------------------------
+
+    PS C:\>ps2.ps1 -sP -i 192.168.1.1
+
+    Perform a ping scan
 ```
 # Service Maps
 Service maps are used to define which services are known to run on which ports.
