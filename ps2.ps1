@@ -520,25 +520,33 @@ foreach ($ip in $targets) {
         if ($verbose) {
             writeOut -text "Performing traceroute for $ip... " -NoNewLine
         }
-        $Global:ProgressPreference = 'SilentlyContinue'
-        $tr = Test-NetConnection -TraceRoute $ip | Select-Object -ExpandProperty TraceRoute
-        $Global:ProgressPreference = 'Continue'
-        writeJson -json "`"traceroute`": {" -level 3 -file $outJson
-        $trCount = 1
         $results["$ip"]["Traceroute"] = @()
-        foreach ($hop in $tr) {
-            if ($trCount -eq $tr.Length) {
-                writeJson -json "`"${trCount}`": `"$hop`"" -level 4 -file $outJson
-            } else {
-                writeJson -json "`"${trCount}`": `"$hop`"," -level 4 -file $outJson
+        writeJson -json "`"traceroute`": {" -level 3 -file $outJson
+        try {
+            $Global:ProgressPreference = 'SilentlyContinue'
+            $tr = Test-NetConnection -TraceRoute $ip -WarningAction:Stop 3>$null | Select-Object -ExpandProperty TraceRoute
+            $Global:ProgressPreference = 'Continue'
+            $trCount = 1
+            foreach ($hop in $tr) {
+                if ($trCount -eq $tr.Length) {
+                    writeJson -json "`"${trCount}`": `"$hop`"" -level 4 -file $outJson
+                } else {
+                    writeJson -json "`"${trCount}`": `"$hop`"," -level 4 -file $outJson
+                }
+                $results["$ip"]["Traceroute"] += @{"Hop" = $trCount; "Host" = $hop}
+                $trCount += 1
             }
-            $results["$ip"]["Traceroute"] += @{"Hop" = $trCount; "Host" = $hop}
-            $trCount += 1
+            if ($verbose) {
+                writeOut -text "Done" -foreground "DarkGreen"
+            }
+        } catch {
+            $results["$ip"]["Traceroute"] += @{"Hop" = 0; "Host" = "Traceroute failed"}
+            writeJson -json "`"0`": `"Traceroute failed`"" -level 4 -file $outJson
+            if ($verbose) {
+                writeOut -text "Failed" -foreground "DarkRed"
+            }
         }
         writeJson -json "}," -level 3 -file $outJson
-        if ($verbose) {
-            writeOut -text "Done"
-        }
     }
     writeJson -json "`"ports`": [" -level 3 -file $outJson
     foreach ($port in $ports) {
