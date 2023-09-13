@@ -598,10 +598,14 @@ if ($tcp) {
 } elseif ($ping) {
     $scanType = "ping"
 }
-$jsonData.add("scanType", $scanType.ToLower())
+if ($jsonData) {
+    $jsonData.add("scanType", $scanType.ToLower())
+}
 $startTime = Get-Date
-$jsonData.add("startTime", $startTime.ToString())
-saveJson
+if ($jsonData) {
+    $jsonData.add("startTime", $startTime.ToString())
+    saveJson
+}
 if ($scanType) {
     writeOut -text "PS2 $scanType scan commenced at: $startTime" -file $outTxt
 } else {
@@ -609,7 +613,9 @@ if ($scanType) {
 }
 $results = @{}
 $encoder = new-object system.text.asciiencoding
-$jsonData.add("hosts", [hashtable[]]$())
+if ($jsonData) {
+    $jsonData.add("hosts", [hashtable[]]$())
+}
 $numTargets = $targets.Length
 $count = 0
 foreach ($ip in $targets) {
@@ -664,8 +670,10 @@ foreach ($ip in $targets) {
                 $hostJson.add("traceroute", $null)
             }
             $hostJson.add("ports", $null)
-            $jsonData["hosts"] += ,@($hostJson)
-            saveJson
+            if ($jsonData) {
+                $jsonData["hosts"] += ,@($hostJson)
+                saveJson
+            }
             continue
         }
     } else {
@@ -822,9 +830,11 @@ foreach ($ip in $targets) {
         $hostJson["ports"] = $hostJson["ports"] | Sort-Object {$_.Protocol}, {$_.Port}
         Start-Sleep -Milliseconds $delay
     }
-    $jsonData["hosts"] += ,@($hostJson)
-    $jsonData["hosts"] = $jsonData["hosts"] | Sort-Object {try {[Version]$_["ip"]} catch {$_["ip"]}}
-    saveJson
+    if ($jsonData) {
+        $jsonData["hosts"] += ,@($hostJson)
+        $jsonData["hosts"] = $jsonData["hosts"] | Sort-Object {try {[Version]$_["ip"]} catch {$_["ip"]}}
+        saveJson
+    }
     $count += 1
     if ($verbose) {
         writeOut -text "Completed scan for $ip ($count/$numTargets)"
@@ -887,8 +897,10 @@ writeOut -text $("_" * 80) -file $outTxt
 $endTime = Get-Date
 $scanDur = New-TimeSpan -start $startTime -End $endTime
 $scanDurStr = $scanDur.ToString("dd'd 'hh'h 'mm'm 'ss's'")
-$jsonData.add("endTime", $endTime.ToString())
-$jsonData.add("duration", $scanDurStr)
-saveJson
+if ($jsonData) {
+    $jsonData.add("endTime", $endTime.ToString())
+    $jsonData.add("duration", $scanDurStr)
+    saveJson
+}
 writeOut -text "`nScan completed at: $endTime (Duration: $scanDurStr)" -file $outTxt -NoNewLine
 writeOut -text "" # New line in terminal but not in output file
