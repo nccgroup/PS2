@@ -8,8 +8,8 @@ This tool was designed for legal purposes only; users are responsible for ensuri
 ```
 SYNTAX
     ps2.ps1 [-banners] [[-delay] <Int32>] [[-inFiles] <FileInfo[]>] [-help] [[-hostnames] <String[]>] [[-ips]  
-    <String[]>] [[-serviceMap] <FileInfo>] [-noColour] [-noPing] [[-outAll] <FileInfo>] [[-outJson] <FileInfo>] [[-outTxt] <FileInfo>] [[-ports] <Int32[]>]     
-    [-randomise] [[-timeout] <Int32>] [-udp] [-v]
+    <String[]>] [[-serviceMap] <FileInfo>] [-noColour] [-noPing] [-overwrite] [[-outAll] <FileInfo>] [[-outJson] <FileInfo>] [[-outTxt] <FileInfo>] [[-ports]   
+    <Int32[]>] [-randomise] [[-timeout] <Int32>] [-udp] [-v]
 
 PARAMETERS
     -banners [<SwitchParameter>]
@@ -38,6 +38,9 @@ PARAMETERS
 
     -noPing [<SwitchParameter>]
         (-nP) Assume all hosts are up and do not ping them prior to scanning
+
+    -overwrite [<SwitchParameter>]
+        (-o) Force output files to be overwritten if they exist and do not prompt for confirmation
 
     -outAll <FileInfo>
         (-oA) Save output in txt and JSON formats to files with a specified name (supersedes -oJ and -oT options)
