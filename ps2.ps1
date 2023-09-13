@@ -46,8 +46,12 @@ PS2. If not, see https://www.gnu.org/licenses.
 (-t) Timeout to use for connections in milliseconds (overrides default of 1000ms)
 .PARAMETER traceroute
 Trace hop path to each host
+.PARAMETER ping
+(-sP) Perform a ping scan
+.PARAMETER tcp
+(-sT) Perform a TCP connect scan
 .PARAMETER udp
-(-u) Perform a UDP scan instead of TCP connect scan
+(-sU) Perform a UDP scan
 .PARAMETER v
 (-Verbose, -vb) Show verbose output
 #>
@@ -58,30 +62,32 @@ Trace hop path to each host
 ###############################################################################>
 
 [cmdletbinding()]
-param([Parameter(Mandatory=$false)][alias("b")][switch] $banners,
-      [Parameter(Mandatory=$false)][alias("d")][int] $delay,
-      [Parameter(Mandatory=$false)][alias("f")][System.IO.FileInfo[]] $inFiles,
-      [Parameter(Mandatory=$false)][alias("h")][switch] $help,
-      [Parameter(Mandatory=$false)][alias("n")][string[]] $hostnames,
-      [Parameter(Mandatory=$false)][alias("i")][string[]] $ips,
-      [Parameter(Mandatory=$false)][alias("m")][System.IO.FileInfo] $serviceMap,
-      [Parameter(Mandatory=$false)][alias("nC")][switch] $noColour,
-      [Parameter(Mandatory=$false)][alias("nP")][switch] $noPing,
-      [Parameter(Mandatory=$false)][alias("o")][switch] $overwrite,
-      [Parameter(Mandatory=$false)][alias("oA")][System.IO.FileInfo] $outAll,
-      [Parameter(Mandatory=$false)][alias("oJ")][System.IO.FileInfo] $outJson,
-      [Parameter(Mandatory=$false)][alias("oT")][System.IO.FileInfo] $outTxt,
-      [Parameter(Mandatory=$false)][alias("p")][int[]][ValidateRange(0, 65535)] $ports,
-      [Parameter(Mandatory=$false)][alias("r")][switch] $randomise,
-      [Parameter(Mandatory=$false)][alias("t")][int][ValidateRange(0, [int]::MaxValue)] $timeout,
-      [Parameter(Mandatory=$false)][switch] $traceroute,
-      [Parameter(Mandatory=$false)][alias("u")][switch] $udp,
-      [Parameter(Mandatory=$false)][switch] $v
+param([Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][alias("b")][switch] $banners,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("d")][int] $delay,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("f")][System.IO.FileInfo[]] $inFiles,
+      [Parameter(Mandatory=$true, ParameterSetName="help")][alias("h")][switch] $help,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("n")][string[]] $hostnames,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("i")][string[]] $ips,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][alias("m")][System.IO.FileInfo] $serviceMap,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("nC")][switch] $noColour,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][alias("nP")][switch] $noPing,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("o")][switch] $overwrite,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("oA")][System.IO.FileInfo] $outAll,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("oJ")][System.IO.FileInfo] $outJson,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("oT")][System.IO.FileInfo] $outTxt,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][alias("p")][int[]][ValidateRange(0, 65535)] $ports,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("r")][switch] $randomise,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][alias("t")][int][ValidateRange(0, [int]::MaxValue)] $timeout,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][switch] $traceroute,
+      [Parameter(Mandatory=$true, ParameterSetName="ping")][alias("sP")][switch] $ping,
+      [Parameter(Mandatory=$true, ParameterSetName="tcp")][alias("sT")][switch] $tcp,
+      [Parameter(Mandatory=$true, ParameterSetName="udp")][alias("sU")][switch] $udp,
+      [Parameter(Mandatory=$false, ParameterSetName="tcp")][Parameter(Mandatory=$false, ParameterSetName="udp")][Parameter(Mandatory=$false, ParameterSetName="ping")][switch] $v
      )
 
 
 <###############################################################################
-# Config                                                                 #
+# Config                                                                       #
 ###############################################################################>
 
 $defDelay = 0
@@ -89,31 +95,50 @@ $defTimeout = 1000
 $defSvcMap = "$(Split-Path $MyInvocation.MyCommand.Path)\servicemap.csv"
 $defTcpPorts = @(21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080)
 $defUdpPorts = @(53, 67, 68, 69, 123, 135, 137, 138, 139, 161, 162, 445, 500, 514, 520, 631, 1434, 1900, 4500, 49152)
-$udpPayloads = @{
-    7 =  @([byte[]] $('31','32','33' | foreach-object { invoke-expression "0x$_" }));
-    11 = @([byte[]] $('31','32','33' | foreach-object { invoke-expression "0x$_" }));
-    13 = @([byte[]] $('31','32','33' | foreach-object { invoke-expression "0x$_" }));
-    19 = @([byte[]] $('31','32','33' | foreach-object { invoke-expression "0x$_" }));
-    37 = @([byte[]] $('31','32','33' | foreach-object { invoke-expression "0x$_" }));
-    53 = @([byte[]] $('00','00','10','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" }),
-           [byte[]] $('00','06','01','00','00','01','00','00','00','00','00','00','07','76','65','72','73','69','6f','6e','04','62','69','6e','64','00','00','10','00','03'| foreach-object { invoke-expression "0x$_" }));
-    69 = @([byte[]] $('00','01','2f','65','74','63','2f','70','61','73','73','77','64','00','6e','65','74','61','73','63','69','69','00' | foreach-object { invoke-expression "0x$_" }));
-    111 = @([byte[]] $('03','9b','65','42','00','00','00','00','00','00','00','02','00','0f','42','43','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" }),
-            [byte[]] $('72','FE','1D','13','00','00','00','00','00','00','00','02','00','01','86','A0','00','01','97','7C','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" }));
-    123 = @([byte[]] $('cb','00','04','fa','00','01','00','00','00','01','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','bf','be','70','99','cd','b3','40','00' | foreach-object { invoke-expression "0x$_" }));
-    137 = @([byte[]] $('80','f0','00','10','00','01','00','00','00','00','00','00','20','43','4b','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','00','00','21','00','01' | foreach-object { invoke-expression "0x$_" }));
-    161 = @([byte[]] $('30','82','00','2f','02','01','00','04','06','70','75','62','6c','69','63','a0','82','00','20','02','04','4c','33','a7','56','02','01','00','02','01','00','30','82','00','10','30','82','00','0c','06','08','2b','06','01','02','01','01','05','00','05','00' | foreach-object { invoke-expression "0x$_" }),
-            [byte[]] $('30','3a','02','01','03','30','0f','02','02','4a','69','02','03','00','ff','e3','04','01','04','02','01','03','04','10','30','0e','04','00','02','01','00','02','01','00','04','00','04','00','04','00','30','12','04','00','04','00','a0','0c','02','02','37','f0','02','01','00','02','01','00','30','00'| foreach-object { invoke-expression "0x$_" }));
-    177 = @([byte[]] $('00','01','00','02','00','01','00','00' | foreach-object { invoke-expression "0x$_" }));
-    500 = @([byte[]] $('5b','5e','64','c0','3e','99','b5','11','00','00','00','00','00','00','00','00','01','10','02','00','00','00','00','00','00','00','01','50','00','00','01','34','00','00','00','01','00','00','00','01','00','00','01','28','01','01','00','08','03','00','00','24','01','01' | foreach-object { invoke-expression "0x$_" }));
-    523 = @([byte[]] $('44','42','32','47','45','54','41','44','44','52','00','53','51','4c','30','38','30','32','30' | foreach-object { invoke-expression "0x$_" }));
-    1434 = @([byte[]] $('02' | foreach-object { invoke-expression "0x$_" }),
-             [byte[]] $('0A' | foreach-object { invoke-expression "0x$_" })); 
-    1604 = @([byte[]] $('1e','00','01','30','02','fd','a8','e3','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" }));
-    2123 = @([byte[]] $('32','01','00','04','00','00','00','00','50','00','00','00' | foreach-object { invoke-expression "0x$_" }));
-    5405 = @([byte[]] $('01','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','80','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" }));
-    6502 = @([byte[]] $('d6','81','81','52','00','00','00','f3','87','4e','01','02','32','00','a8','c0','00','00','01','13','c1','d9','04','dd','03','7d','00','00','0d','00','54','48','43','54','48','43','54','48','43','54','48','43','54','48','43','20','20','20','20','20','20','20','20','20','20','20','20','20','20','20','20','20','02','32','00','a8','c0','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" }))
-}
+$udpPayloads = @{}
+$udpPayloads[7] = @() +
+                  ,[byte[]] $('31','32','33' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[11] = @() +
+                   ,[byte[]] $('31','32','33' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[13] = @() +
+                   ,[byte[]] $('31','32','33' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[19] = @() +
+                   ,[byte[]] $('31','32','33' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[37] = @() +
+                   ,[byte[]] $('31','32','33' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[53] = @() +
+                   ,[byte[]] $('00','00','10','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" }) +
+                   ,[byte[]] $('00','06','01','00','00','01','00','00','00','00','00','00','07','76','65','72','73','69','6f','6e','04','62','69','6e','64','00','00','10','00','03'| foreach-object { invoke-expression "0x$_" })
+$udpPayloads[69] = @() +
+                   ,[byte[]] $('00','01','2f','65','74','63','2f','70','61','73','73','77','64','00','6e','65','74','61','73','63','69','69','00' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[111] = @() +
+                    ,[byte[]] $('03','9b','65','42','00','00','00','00','00','00','00','02','00','0f','42','43','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" }) +
+                    ,[byte[]] $('72','FE','1D','13','00','00','00','00','00','00','00','02','00','01','86','A0','00','01','97','7C','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[123] = @() +
+                    ,[byte[]] $('cb','00','04','fa','00','01','00','00','00','01','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','bf','be','70','99','cd','b3','40','00' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[137] = @() +
+                    ,[byte[]] $('80','f0','00','10','00','01','00','00','00','00','00','00','20','43','4b','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','41','00','00','21','00','01' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[161] = @() +
+                    ,[byte[]] $('30','82','00','2f','02','01','00','04','06','70','75','62','6c','69','63','a0','82','00','20','02','04','4c','33','a7','56','02','01','00','02','01','00','30','82','00','10','30','82','00','0c','06','08','2b','06','01','02','01','01','05','00','05','00' | foreach-object { invoke-expression "0x$_" }) +
+                    ,[byte[]] $('30','3a','02','01','03','30','0f','02','02','4a','69','02','03','00','ff','e3','04','01','04','02','01','03','04','10','30','0e','04','00','02','01','00','02','01','00','04','00','04','00','04','00','30','12','04','00','04','00','a0','0c','02','02','37','f0','02','01','00','02','01','00','30','00'| foreach-object { invoke-expression "0x$_" })
+$udpPayloads[177] = @() +
+                    ,[byte[]] $('00','01','00','02','00','01','00','00' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[500] = @() +
+                    ,[byte[]] $('5b','5e','64','c0','3e','99','b5','11','00','00','00','00','00','00','00','00','01','10','02','00','00','00','00','00','00','00','01','50','00','00','01','34','00','00','00','01','00','00','00','01','00','00','01','28','01','01','00','08','03','00','00','24','01','01' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[523] = @() +
+                    ,[byte[]] $('44','42','32','47','45','54','41','44','44','52','00','53','51','4c','30','38','30','32','30' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[1434] = @() +
+                     ,[byte[]] $('02' | foreach-object { invoke-expression "0x$_" }) +
+                     ,[byte[]] $('0A' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[1604] = @() +
+                     ,[byte[]] $('1e','00','01','30','02','fd','a8','e3','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[2123] = @() +
+                     ,[byte[]] $('32','01','00','04','00','00','00','00','50','00','00','00' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[5405] = @() +
+                     ,[byte[]] $('01','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','80','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" })
+$udpPayloads[6502] = @() +
+                     ,[byte[]] $('d6','81','81','52','00','00','00','f3','87','4e','01','02','32','00','a8','c0','00','00','01','13','c1','d9','04','dd','03','7d','00','00','0d','00','54','48','43','54','48','43','54','48','43','54','48','43','54','48','43','20','20','20','20','20','20','20','20','20','20','20','20','20','20','20','20','20','02','32','00','a8','c0','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00','00' | foreach-object { invoke-expression "0x$_" })
+
 
 <###############################################################################
 # Functions                                                                    #
@@ -363,24 +388,26 @@ if ($randomise) {
 }
 
 # Get service map
-if ($serviceMap) {
-    if (-Not ($serviceMap | Test-Path)) {
-       Throw "Service map file '$serviceMap' does not exist"
+if (-Not $ping) {
+    if ($serviceMap) {
+        if (-Not ($serviceMap | Test-Path)) {
+        Throw "Service map file '$serviceMap' does not exist"
+        }
+        $csvPath = $serviceMap
+    } else {
+    $csvPath = $defSvcMap
     }
-    $csvPath = $serviceMap
-} else {
-   $csvPath = $defSvcMap
-}
-$svcMap = @()
-if ($csvPath | Test-Path) {
-   $csv = Import-Csv -Header 'Service', 'Port', 'Protocol' $csvPath
-   foreach ($row in $csv) {
-       $svcMap += (@{
-           Service = $row.("Service")
-           Port = [int]$row.("Port")
-           Protocol = $row.("Protocol").ToLower()
-       })
-   }
+    $svcMap = @()
+    if ($csvPath | Test-Path) {
+    $csv = Import-Csv -Header 'Service', 'Port', 'Protocol' $csvPath
+    foreach ($row in $csv) {
+        $svcMap += (@{
+            Service = $row.("Service")
+            Port = [int]$row.("Port")
+            Protocol = $row.("Protocol").ToLower()
+        })
+    }
+    }
 }
 
 # Set default delay if no delay specified
@@ -394,16 +421,18 @@ if (-Not $timeout) {
 }
 
 # Set default ports if no ports specified
-if (-Not $ports) {
-    if ($udp) {
-        $ports = $defUdpPorts
-    } else {
-        $ports = $defTcpPorts
+if (-Not $ping) {
+    if (-Not $ports) {
+        if ($udp) {
+            $ports = $defUdpPorts
+        } elseif ($tcp) {
+            $ports = $defTcpPorts
+        }
     }
-}
-$ports = $ports | Sort-Object -unique
-if ($randomise) {
-    $ports = $ports | Sort-Object {Get-Random}
+    $ports = $ports | Sort-Object -unique
+    if ($randomise) {
+        $ports = $ports | Sort-Object {Get-Random}
+    }
 }
 
 # Set protocol
@@ -440,9 +469,20 @@ if ($outJson) {
 # Scan                                                                         #
 ###############################################################################>
 
+if ($tcp) {
+    $scanType = "TCP"
+} elseif ($udp) {
+    $scanType = "UDP"
+} elseif ($ping) {
+    $scanType = "ping"
+}
 $startTime = Get-Date
 writeJson -json "`"startTime`": `"$startTime`"," -level 1 -file $outJson
-writeOut -text "PS2 scan commenced at: $startTime" -file $outTxt
+if ($scanType) {
+    writeOut -text "PS2 $scanType scan commenced at: $startTime" -file $outTxt
+} else {
+    writeOut -text "PS2 scan commenced at: $startTime" -file $outTxt
+}
 $results = @{}
 $encoder = new-object system.text.asciiencoding
 writeJson -json "`"hosts`": [" -level 1 -file $outJson
@@ -468,16 +508,16 @@ foreach ($ip in $targets) {
         }
         if ([version]$PSVersionTable.PSVersion -lt [version]"6.0.0") {
             try {
-                $ping = Test-Connection $ip.IPAddressToString -Quiet
+                $pingRes = Test-Connection $ip.IPAddressToString -Quiet
             } catch {
-                $ping = $false
+                $pingRes = $false
             }
         } else {
             $timeoutSecs = [int][math]::ceiling($timeout/1000)
             try {
-                $ping = Test-Connection -TargetName $ip.IPAddressToString -TimeoutSeconds $timeoutSecs -Quiet
+                $pingRes = Test-Connection -TargetName $ip.IPAddressToString -TimeoutSeconds $timeoutSecs -Quiet
             } catch {
-                $ping = $false
+                $pingRes = $false
             }
         }
         $results["$ip"]["Status"] = "Up"
@@ -485,7 +525,7 @@ foreach ($ip in $targets) {
         if ($verbose) {
             writeOut -text "Host is " -NoNewLine
         }
-        if ($ping) {
+        if ($pingRes) {
             if ($verbose) {
                 writeOut -text "up" -foreground "DarkGreen"
             }
@@ -546,131 +586,139 @@ foreach ($ip in $targets) {
                 writeOut -text "Failed" -foreground "DarkRed"
             }
         }
-        writeJson -json "}," -level 3 -file $outJson
-    }
-    writeJson -json "`"ports`": [" -level 3 -file $outJson
-    foreach ($port in $ports) {
-        Start-Sleep -Milliseconds $delay
-        if ($verbose) {
-            writeOut -NoNewLine -text "Scanning $($ip.IPAddressToString) port $port/$protocol... "
-        }
-        $result = @{}
-        $result["Port"] += $port
-        $result["Protocol"] += $protocol
-        if ($udp) {
-            # UDP scan
-            $payloads = @()
-            if ($udpPayloads.ContainsKey($port)) {
-                $payloads = $udpPayloads[$port]
-            }
-            $payloads += $encoder.GetBytes("$(Get-Date)")
-            foreach($bytes in $payloads) {
-                $socket = new-object Net.Sockets.UdpClient($ip.AddressFamily)
-                $socket.Client.ReceiveTimeout = $timeout
-                $socket.Connect($ip, $port)
-                try {
-                    $socket.Send($bytes, $bytes.Length) | out-null
-                } catch {
-                    $result["Status"] = "Closed"
-                    $result["StatusColour"] = "DarkRed"
-                    break
-                }
-                $endpoint = New-Object System.Net.IPEndPoint $ip, $port
-                if ($banners) {
-                    $result["Banner"] = ""
-                }
-                try {
-                    $reply = $socket.Receive([ref]$endpoint)
-                    $result["Status"] = "Open"
-                    $result["StatusColour"] = "DarkGreen"
-                    if ($banners) {
-                        $result["Banner"] = $encoder.GetString($reply) -replace "`n"," " -replace "`r"," "
-                    }
-                    break
-                } catch {
-                    $result["Status"] = "Open|Filtered"
-                    $result["StatusColour"] = "Yellow"
-                }
-                $socket.Close()
-                Start-Sleep -Milliseconds $delay
-            }
-            $jsonBanner = "`"$($result["Banner"])`""
-                    if ($result["Banner"].Trim() -eq "") {
-                        $result["Banner"] = "<No Banner>"
-                        $jsonBanner = "null"
-                    }
+        if ($pingRes) {
+            writeJson -json "}" -level 3 -file $outJson
         } else {
-            # TCP connect scan
-            $socket = new-object Net.Sockets.TcpClient($ip.AddressFamily)
-            try {
-                $socket.ConnectAsync($ip, $port).Wait($timeout) | out-null
-            } catch {}
-            if ($socket.Connected) {
-                $result["Status"] = "Open"
-                $result["StatusColour"] = "DarkGreen"
-                if ($banners) {
-                    Start-Sleep -seconds 1
-                    $result["Banner"] = ""
-                    $stream = $socket.GetStream()
-                    while ($stream.DataAvailable) {
-                        $byte = $stream.ReadByte()
-                        $result["Banner"] = $encoder.GetString($byte) -replace "`n"," " -replace "`r"," "
+            writeJson -json "}," -level 3 -file $outJson
+        }
+    }
+    if (-Not $ping) {
+        writeJson -json "`"ports`": [" -level 3 -file $outJson
+        foreach ($port in $ports) {
+            Start-Sleep -Milliseconds $delay
+            if ($verbose) {
+                writeOut -NoNewLine -text "Scanning $($ip.IPAddressToString) port $port/$protocol... "
+            }
+            $result = @{}
+            $result["Port"] += $port
+            $result["Protocol"] += $protocol
+            if ($udp) {
+                # UDP scan
+                $payloads = @()
+                if ($udpPayloads.ContainsKey($port)) {
+                    $payloads = $udpPayloads[$port]
+                }
+                $payloads += , $encoder.GetBytes("$(Get-Date)")
+                foreach($bytes in $payloads) {
+                    $socket = new-object Net.Sockets.UdpClient($ip.AddressFamily)
+                    $socket.Client.ReceiveTimeout = $timeout
+                    $socket.Connect($ip, $port)
+                    try {
+                        $socket.Send($bytes, $bytes.Length) | out-null
+                    } catch {
+                        $result["Status"] = "Closed"
+                        $result["StatusColour"] = "DarkRed"
+                        break
                     }
+                    $endpoint = New-Object System.Net.IPEndPoint $ip, $port
+                    if ($banners) {
+                        $result["Banner"] = ""
+                    }
+                    try {
+                        $reply = $socket.Receive([ref]$endpoint)
+                        $result["Status"] = "Open"
+                        $result["StatusColour"] = "DarkGreen"
+                        if ($banners) {
+                            $result["Banner"] = $encoder.GetString($reply) -replace "`n"," " -replace "`r"," "
+                        }
+                        break
+                    } catch {
+                        $result["Status"] = "Open|Filtered"
+                        $result["StatusColour"] = "Yellow"
+                    }
+                    $socket.Close()
+                    Start-Sleep -Milliseconds $delay
+                }
+                if ($banners) {
                     $jsonBanner = "`"$($result["Banner"])`""
                     if ($result["Banner"].Trim() -eq "") {
                         $result["Banner"] = "<No Banner>"
                         $jsonBanner = "null"
                     }
                 }
-            } else {
-                $result["Status"] = "Closed"
-                $result["StatusColour"] = "DarkRed"
-                if ($banners) {
-                    $result["Banner"] = "<No Banner>"
-                    $jsonBanner = "null"
-                }
-            }
-            $socket.Close()
-        }
-        $result["Service"] = "Unknown"
-        foreach ($service in $svcMap) {
-            if (($service.Port -eq $port) -and ($service.Protocol -eq $protocol)) {
-                if (($banners) -and ($result["Banner"].ToLower().contains($service.Service.ToLower()))) {
-                        $result["Service"] = "$($service.Service)"
+            } elseif ($tcp) {
+                # TCP connect scan
+                $socket = new-object Net.Sockets.TcpClient($ip.AddressFamily)
+                try {
+                    $socket.ConnectAsync($ip, $port).Wait($timeout) | out-null
+                } catch {}
+                if ($socket.Connected) {
+                    $result["Status"] = "Open"
+                    $result["StatusColour"] = "DarkGreen"
+                    if ($banners) {
+                        Start-Sleep -seconds 1
+                        $result["Banner"] = ""
+                        $stream = $socket.GetStream()
+                        while ($stream.DataAvailable) {
+                            $byte = $stream.ReadByte()
+                            $result["Banner"] = $encoder.GetString($byte) -replace "`n"," " -replace "`r"," "
+                        }
+                        $jsonBanner = "`"$($result["Banner"])`""
+                        if ($result["Banner"].Trim() -eq "") {
+                            $result["Banner"] = "<No Banner>"
+                            $jsonBanner = "null"
+                        }
+                    }
                 } else {
-                    $result["Service"] = "$($service.Service)?"
+                    $result["Status"] = "Closed"
+                    $result["StatusColour"] = "DarkRed"
+                    if ($banners) {
+                        $result["Banner"] = "<No Banner>"
+                        $jsonBanner = "null"
+                    }
                 }
-                break
+                $socket.Close()
             }
+            $result["Service"] = "Unknown"
+            foreach ($service in $svcMap) {
+                if (($service.Port -eq $port) -and ($service.Protocol -eq $protocol)) {
+                    if (($banners) -and ($result["Banner"].ToLower().contains($service.Service.ToLower()))) {
+                            $result["Service"] = "$($service.Service)"
+                    } else {
+                        $result["Service"] = "$($service.Service)?"
+                    }
+                    break
+                }
+            }
+            if ($verbose) {
+                writeOut -text $result["Status"] -foreground $result["StatusColour"]
+            }
+            writeJson -json "{" -level 4 -file $outJson
+            writeJson -json "`"port`": $port," -level 5 -file $outJson
+            writeJson -json "`"protocol`": `"$protocol`"," -level 5 -file $outJson
+            writeJson -json "`"status`": `"$($result["Status"])`"," -level 5 -file $outJson
+            if ($banners) {
+                writeJson -json "`"service`": `"$($result["Service"])`"," -level 5 -file $outJson
+                writeJson -json "`"banner`": $jsonBanner" -level 5 -file $outJson
+            } else {
+                writeJson -json "`"service`": `"$($result["Service"])`"" -level 5 -file $outJson
+            }
+            if ($port -eq $ports[-1]) {
+                writeJson -json "}" -level 4 -file $outJson
+            } else {
+                writeJson -json "}," -level 4 -file $outJson
+            }
+            $results["$ip"]["Ports"] += $result
         }
-        if ($verbose) {
-            writeOut -text $result["Status"] -foreground $result["StatusColour"]
-        }
-        writeJson -json "{" -level 4 -file $outJson
-        writeJson -json "`"port`": $port," -level 5 -file $outJson
-        writeJson -json "`"protocol`": `"$protocol`"," -level 5 -file $outJson
-        writeJson -json "`"status`": `"$($result["Status"])`"," -level 5 -file $outJson
-        if ($banners) {
-            writeJson -json "`"service`": `"$($result["Service"])`"," -level 5 -file $outJson
-            writeJson -json "`"banner`": $jsonBanner" -level 5 -file $outJson
-        } else {
-            writeJson -json "`"service`": `"$($result["Service"])`"" -level 5 -file $outJson
-        }
-        if ($port -eq $ports[-1]) {
-            writeJson -json "}" -level 4 -file $outJson
-        } else {
-            writeJson -json "}," -level 4 -file $outJson
-        }
-        $results["$ip"]["Ports"] += $result
+        writeJson -json "]" -level 3 -file $outJson
+        $results["$ip"]["Ports"] = $results["$ip"]["Ports"] | Sort-Object {$_.Protocol}, {$_.Port}
+        Start-Sleep -Milliseconds $delay
     }
-    writeJson -json "]" -level 3 -file $outJson
     if ($ip -eq $targets[-1]) {
         writeJson -json "}" -level 2 -file $outJson
     } else {
         writeJson -json "}," -level 2 -file $outJson
     }
-    $results["$ip"]["Ports"] = $results["$ip"]["Ports"] | Sort-Object {$_.Protocol}, {$_.Port}
-    Start-Sleep -Milliseconds $delay
     $count += 1
     if ($verbose) {
         writeOut -text "Completed scan for $ip ($count/$numTargets)"
@@ -694,26 +742,30 @@ foreach ($result in $results.GetEnumerator()) {
         writeOut -text "If you believe this host is up, rerun the scan using the -noPing (-nP) option to treat all hosts as up." -file $outTxt
         continue
     }
-    writeOut -text "" -file $outTxt
-    if ($banners) {
-        $outTable = $result.Value["Ports"] | ForEach-Object {[PSCustomObject]$_} | Format-Table -AutoSize -Property @{L='Host'; E={$result.Name}}, @{L='Port'; E={"$($_.Port)/$($_.Protocol)"}}, "Status", "Service", "Banner"
-    } else {
-        $outTable = $result.Value["Ports"] | ForEach-Object {[PSCustomObject]$_} | Format-Table -AutoSize -Property @{L='Host'; E={$result.Name}}, @{L='Port'; E={"$($_.Port)/$($_.Protocol)"}}, "Status", "Service"
+    if (-Not $ping) {
+        writeOut -text "" -file $outTxt
     }
-    $outStr = "$($outTable | Out-String)".Trim()
-    $fg = [System.Console]::ForegroundColor
-    foreach($line in $outStr.Split([Environment]::NewLine)) {
-        if ($line -eq "") {
-            continue
+    if (-Not $ping) {
+        if ($banners) {
+            $outTable = $result.Value["Ports"] | ForEach-Object {[PSCustomObject]$_} | Format-Table -AutoSize -Property @{L='Host'; E={$result.Name}}, @{L='Port'; E={"$($_.Port)/$($_.Protocol)"}}, "Status", "Service", "Banner"
+        } else {
+            $outTable = $result.Value["Ports"] | ForEach-Object {[PSCustomObject]$_} | Format-Table -AutoSize -Property @{L='Host'; E={$result.Name}}, @{L='Port'; E={"$($_.Port)/$($_.Protocol)"}}, "Status", "Service"
         }
-        if ($line -match "^\S+?\s+?\S+?\s+?Open\|Filtered.*?$") {
-            $fg = "Yellow"
-        } elseif ($line -match "^\S+?\s+?\S+?\s+?Open.*?$") {
-            $fg = "DarkGreen"
-        } elseif ($line -match "^\S+?\s+?\S+?\s+?Closed.*?$") {
-            $fg = "DarkRed"
+        $outStr = "$($outTable | Out-String)".Trim()
+        $fg = [System.Console]::ForegroundColor
+        foreach($line in $outStr.Split([Environment]::NewLine)) {
+            if ($line -eq "") {
+                continue
+            }
+            if ($line -match "^\S+?\s+?\S+?\s+?Open\|Filtered.*?$") {
+                $fg = "Yellow"
+            } elseif ($line -match "^\S+?\s+?\S+?\s+?Open.*?$") {
+                $fg = "DarkGreen"
+            } elseif ($line -match "^\S+?\s+?\S+?\s+?Closed.*?$") {
+                $fg = "DarkRed"
+            }
+            writeOut -text $line -file $outTxt -foreground $fg
         }
-        writeOut -text $line -file $outTxt -foreground $fg
     }
     if ($traceroute) {
         writeOut -text "`nTraceroute:`n" -file $outTxt
